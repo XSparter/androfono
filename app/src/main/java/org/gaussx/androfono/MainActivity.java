@@ -7,20 +7,18 @@ import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.Environment;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
 
     private AudioTrack audioTrack;
     private boolean isPlaying = false;
-
+    private boolean isAudioStreaming = false;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        inviaComando("apricancello");
+                        inviaComando("apricancello",12343);
                     }
                 });
                 thread.start();
@@ -77,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        inviaComando("azionacitofono");
+                        inviaComando("azionacitofono",12343);
                     }
                 });
                 thread.start();
@@ -105,11 +103,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public static void inviaComando(String comando) {
+    public static void inviaComando(String comando, int porta) {
         try {
             // Sostituisci con l'indirizzo IP e la porta del tuo server
             String serverAddress = "192.168.1.220";
-            int serverPort = 12343;
+            //int serverPort = 12343;
+            int serverPort = porta;
 
             // Crea una connessione socket
             Socket socket = new Socket(serverAddress, serverPort);
@@ -147,8 +146,48 @@ public class MainActivity extends AppCompatActivity {
 
             recordingThread.start();
         }
+        setMute();
     }
+    public boolean mute = false;
+    public boolean mute_microfono_speaker = true;
+    public void setMute(){
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (mute) {
+                    mute = false;
+                    inviaComando("muteoff",54321);
+                    setSpeaker();
+                } else {
+                    mute = true;
+                    inviaComando("muteonn",54321);
+                    setSpeaker();
 
+                }
+                Thread.currentThread().interrupt();
+            }
+        });
+        thread.start();
+
+    }
+    public void setSpeaker(){
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (mute_microfono_speaker) {
+                    mute_microfono_speaker = false;
+                    inviaComando("muteoff",54322);
+                } else {
+                    mute_microfono_speaker = true;
+                    inviaComando("muteonn",54322);
+
+                }
+                Thread.currentThread().interrupt();
+            }
+        });
+        thread.start();
+
+    }
     private void stopAudioStreaming() {
         if (isRecording) {
             isRecording = false;
@@ -172,8 +211,8 @@ public class MainActivity extends AppCompatActivity {
         if (!isPlaying) {
             isPlaying = true;
             audioTrack = new AudioTrack(
-                    //AudioManager.STREAM_MUSIC, //questo riproduce dallo speaker
-                    AudioManager.STREAM_VOICE_CALL, //questo riproduce dall'auricolare
+                    AudioManager.STREAM_MUSIC, //questo riproduce dallo speaker
+                    //AudioManager.STREAM_VOICE_CALL, //questo riproduce dall'auricolare
                     AUDIO_SAMPLE_RATE,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AUDIO_FORMAT,
@@ -206,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void receiveAudio() {
         try {
-            Socket socket = new Socket("192.168.1.220", 12344);
+            Socket socket = new Socket("192.168.1.220", 12859);
             DataInputStream inputStream = new DataInputStream(socket.getInputStream());
 
             byte[] buffer = new byte[BUFFER_SIZE];
