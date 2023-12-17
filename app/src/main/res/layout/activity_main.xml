@@ -27,6 +27,7 @@
                 android:id="@+id/startButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:backgroundTint="#FF0000"
                 android:text="startButton" />
 
             <Button
@@ -34,6 +35,32 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="stopButton" />
+            <Button
+                android:id="@+id/playButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#FF0000"
+                android:text="playButton" />
+
+            <Button
+                android:id="@+id/stopPlayButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="stopPlayButton" />
+
+            <Button
+                android:id="@+id/azionacancello"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#FFD500"
+                android:text="azionacancello" />
+
+            <Button
+                android:id="@+id/azionacitofono"
+                android:layout_width="match_parent"
+                android:backgroundTint="#FF0000"
+                android:layout_height="wrap_content"
+                android:text="azionacitofono" />
         </LinearLayout>
 
         <LinearLayout
