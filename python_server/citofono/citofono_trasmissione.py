@@ -3,10 +3,12 @@ import socket
 import pyaudio
 import threading
 import netifaces as ni
-
+import sounddevice
+import sys
 
 muted = False
 muted_lock = threading.Lock()
+
 def get_local_ip():
     try:
         interfaces = ni.interfaces()
@@ -21,6 +23,7 @@ def get_local_ip():
     except Exception as e:
         print(f"Errore nell'ottenere l'indirizzo IP: {e}")
         return None
+
 def set_muted(value):
     global muted
     with muted_lock:
@@ -29,6 +32,7 @@ def set_muted(value):
 def get_muted():
     with muted_lock:
         return muted
+
 def send_microphone_audio(client_socket, chunk_size=1024):
     while True:
         if not get_muted():
@@ -63,6 +67,7 @@ def send_microphone_audio(client_socket, chunk_size=1024):
                 stream.stop_stream()
                 stream.close()
                 p.terminate()
+
 class CommandHandler(socketserver.BaseRequestHandler):
     def handle(self):
         try:
@@ -77,7 +82,8 @@ class CommandHandler(socketserver.BaseRequestHandler):
                 # Aggiungi qui la logica per gestire il comando ricevuto
         except Exception as e:
             print(f"Error receiving commands: {e}")
-def start_server(port=12859, command_port=54321):
+
+def start_server(port, command_port):
     local_ip = get_local_ip()
 
     if local_ip is None:
@@ -105,5 +111,14 @@ def start_server(port=12859, command_port=54321):
     finally:
         server_socket.close()
         command_server.server_close()
+
 if __name__ == "__main__":
-    start_server()
+    if len(sys.argv) != 3:
+        print("Usage: python script_name.py <port> <command_port>")
+        sys.exit(1)
+
+    port = int(sys.argv[1])
+    command_port = int(sys.argv[2])
+
+    start_server(port, command_port)
+

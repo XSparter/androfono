@@ -8,14 +8,21 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.Arrays;
@@ -33,19 +40,37 @@ public class MainActivity extends AppCompatActivity {
     private Thread recordingThread;
 
     private AudioTrack audioTrack;
+    LinearLayout visualizzatore;
     private boolean isPlaying = false;
     private boolean isAudioStreaming = false;
+    private ImageView ball;
+    private boolean isRed = true;
+    public int porta_altoparlante = 0;
+    public int porta_microfono = 0;
+    public int porta_altoparlante_controllo = 0;
+    public int porta_microfono_controllo = 0;
+    ImageView redCircleImageView;
+    ImageView greenCircleImageView;
+    public int portacomandiesecutore = 12343; // porta del comando esecutore è anche quella che viene interrogata all'inizio e che restituisce le porte dei microfoni e degli altoparlanti
+    // Creare un ImageView per il cerchio verde
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        redCircleImageView = createCircleImageView(R.drawable.red_circle);
+        greenCircleImageView = createCircleImageView(R.drawable.green_circle);
         Button startButton = findViewById(R.id.startButton);
-        Button stopButton = findViewById(R.id.stopButton);
         Button playButton = findViewById(R.id.playButton);
         Button apricancello = findViewById(R.id.azionacancello);
         Button azionacitofono = findViewById(R.id.azionacitofono);
-        Button stopPlayButton = findViewById(R.id.stopPlayButton);
+        EditText ip_field = findViewById(R.id.ip_citofono);
+        EditText portelog = findViewById(R.id.portelog);
+        visualizzatore = findViewById(R.id.visualizzatorestatus);
+        redCircleImageView.setId(56);
+        greenCircleImageView.setId(57);
+
+
+
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -81,12 +106,6 @@ public class MainActivity extends AppCompatActivity {
                 thread.start();
             }
         });
-        stopButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                stopAudioStreaming();
-            }
-        });
 
         playButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -94,37 +113,109 @@ public class MainActivity extends AppCompatActivity {
                 startAudioPlaying();
             }
         });
-
-        stopPlayButton.setOnClickListener(new View.OnClickListener() {
+        // ora inizializzo la connessione con il server
+        citofono_ip = ip_field.getText().toString();
+        Thread thread = new Thread(new Runnable() {
             @Override
-            public void onClick(View view) {
-                stopAudioPlaying();
-            }
-        });
-    }
+            public void run() {
+                String portemicrofoni = inviaComando("richiediportamicrofoni",portacomandiesecutore);
+                String portealtoparlanti = inviaComando("richiediportaaltoparlante",portacomandiesecutore);
+                String[] portealtoparlanti_split = portealtoparlanti.split("#");
+                porta_altoparlante = Integer.parseInt(portealtoparlanti_split[0]);
+                porta_altoparlante_controllo = Integer.parseInt(portealtoparlanti_split[1]);
+                String [] portemicrofoni_split = portemicrofoni.split("#");
+                porta_microfono = Integer.parseInt(portemicrofoni_split[0]);
+                porta_microfono_controllo = Integer.parseInt(portemicrofoni_split[1]);
+                portelog.setText("PM: " + portemicrofoni + " PA:" + portealtoparlanti);
+                String status = inviaComando("status",portacomandiesecutore);
+                if(status.equals("green")){
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateStatus(true);
+                        }
+                    });
 
-    public static void inviaComando(String comando, int porta) {
+                }else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateStatus(false);
+                        }
+                    });
+                }
+                Thread.currentThread().interrupt();
+            }
+        }); thread.start();
+
+    }
+    private ImageView createCircleImageView(int drawableResourceId) {
+        ImageView imageView = new ImageView(this);
+        imageView.setImageResource(drawableResourceId);
+        return imageView;
+    }
+    private void updateStatus(boolean isGreen) {
+        if (isGreen) {
+            removeViewById(56);
+            visualizzatore.addView(greenCircleImageView);
+
+        } else {
+            removeViewById(57);
+            visualizzatore.addView(redCircleImageView);
+
+        }
+    }
+    public String citofono_ip = "";
+    private void removeViewById(int viewId) {
+        View viewToRemove = findViewById(viewId);
+        if (viewToRemove != null) {
+            ViewGroup parentView = (ViewGroup) viewToRemove.getParent();
+            if (parentView != null) {
+                parentView.removeView(viewToRemove);
+            }
+        }
+    }
+    public String inviaComando(String comando, int porta) {
+        Socket socket = null;
+        String risposta = null;
+
         try {
             // Sostituisci con l'indirizzo IP e la porta del tuo server
-            String serverAddress = "192.168.1.220";
-            //int serverPort = 12343;
+            String serverAddress = citofono_ip;
+            // int serverPort = 12343;
             int serverPort = porta;
 
             // Crea una connessione socket
-            Socket socket = new Socket(serverAddress, serverPort);
+            socket = new Socket(serverAddress, serverPort);
 
             // Ottieni lo stream di output
             OutputStream out = socket.getOutputStream();
-
             // Invia il comando al server
             out.write(comando.getBytes());
 
-            // Chiudi la connessione
-            socket.close();
+            // Ottieni lo stream di input
+            InputStream in = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+
+            // Leggi la risposta dal server
+            risposta = reader.readLine();
+
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            try {
+                // Chiudi la connessione solo se è stata aperta
+                if (socket != null && !socket.isClosed()) {
+                    socket.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+
+        return risposta;
     }
+
     private void startAudioStreaming() {
         if (!isRecording) {
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -176,10 +267,10 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 if (mute_microfono_speaker) {
                     mute_microfono_speaker = false;
-                    inviaComando("muteoff",54322);
+                    inviaComando("muteoff",porta_microfono_controllo); //54322
                 } else {
                     mute_microfono_speaker = true;
-                    inviaComando("muteonn",54322);
+                    inviaComando("muteonn",porta_microfono_controllo);
 
                 }
                 Thread.currentThread().interrupt();
@@ -245,7 +336,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void receiveAudio() {
         try {
-            Socket socket = new Socket("192.168.1.220", 12859);
+            Socket socket = new Socket(citofono_ip, porta_microfono); //porta_microfono
             DataInputStream inputStream = new DataInputStream(socket.getInputStream());
 
             byte[] buffer = new byte[BUFFER_SIZE];
@@ -269,7 +360,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try {
-                Socket socket = new Socket("192.168.1.220", 12345);
+                Socket socket = new Socket("192.168.1.220", 45567);
                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 
                 byte[] buffer = new byte[BUFFER_SIZE];

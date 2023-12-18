@@ -1,11 +1,22 @@
+import sys
+import logging
+import os
+
+# Rimuovi l'impostazione della variabile PYALSA_DEBUG
+os.environ.pop('PYALSA_DEBUG', None)
+
+# Configura il logger per disabilitare i log di ALSA
+logging.getLogger('pyalsa').setLevel(logging.CRITICAL)
+
 import socketserver
 import pyaudio
 import netifaces as ni
+import sounddevice
 import threading
-import os
 
 muted = False
 muted_lock = threading.Lock()
+
 def get_local_ip():
     try:
         interfaces = ni.interfaces()
@@ -20,6 +31,7 @@ def get_local_ip():
     except Exception as e:
         print(f"Errore nell'ottenere l'indirizzo IP: {e}")
         return None
+
 def set_muted(value):
     global muted
     with muted_lock:
@@ -28,10 +40,10 @@ def set_muted(value):
 def get_muted():
     with muted_lock:
         return muted
+
 class AudioStreamHandler(socketserver.StreamRequestHandler):
     def handle(self):
         print(f"Accepted connection from {self.client_address}")
-        os.environ['PYALSA_DEBUG'] = '0'
         while True:
             if not get_muted():
                 p = pyaudio.PyAudio()
@@ -97,4 +109,10 @@ def start_server(audio_port=12345, command_port=54322):
         command_server.server_close()
 
 if __name__ == "__main__":
-    start_server()
+    # Ottieni i valori di audio_port e command_port dalla riga di comando
+    if len(sys.argv) != 3:
+        print("Usage: python nome_script.py audio_port command_port")
+    else:
+        audio_port = int(sys.argv[1])
+        command_port = int(sys.argv[2])
+        start_server(audio_port, command_port)
