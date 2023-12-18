@@ -47,8 +47,6 @@ def controllo_orario():
         if orario_di_riferimento is not None and now > orario_di_riferimento + timedelta(seconds=5):
             # Esegui la funzione per terminare i processi
             termina_processi()
-            Thread.exit()
-
         # Attendi un po' prima di effettuare il controllo successivo
         time.sleep(1)
 atexit.register(termina_processi)           
