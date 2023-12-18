@@ -6,11 +6,15 @@ import subprocess
 import os
 import signal
 import atexit
+from datetime import datetime, timedelta
+import threading
+
 # Configura i pin GPIO
 PIN_APRICANCELLO = 27 
 PIN_AZIONA_CITOFONO = 18 
 pid_ricezione = None
 pid_trasmissione = None
+orario_di_riferimento = None
 def esegui_script(script_path, arg1, arg2):
     # Avvia lo script come processo figlio e intercetta l'output
     arg1 = str(arg1)
@@ -35,7 +39,18 @@ def termina_processi():
     except ProcessLookupError:
         # I processi potrebbero essere già terminati
         pass
-        
+def controllo_orario():
+    while True:
+        now = datetime.now()
+
+        # Verifica se è passato più di 10 secondi dall'orario di riferimento
+        if orario_di_riferimento is not None and now > orario_di_riferimento + timedelta(seconds=5):
+            # Esegui la funzione per terminare i processi
+            termina_processi()
+            Thread.exit()
+
+        # Attendi un po' prima di effettuare il controllo successivo
+        time.sleep(1)
 atexit.register(termina_processi)           
 # Inizializza il modulo GPIO
 GPIO.setmode(GPIO.BCM)
@@ -49,6 +64,7 @@ server_socket.listen(1)
 print("Cartella di lavoro corrente:", os.getcwd())
 print("Server in attesa di connessioni...")
 stato_citofono = False
+lock = threading.Lock()
 while True:
     # Accetta la connessione
     client_socket, client_address = server_socket.accept()
@@ -71,10 +87,13 @@ while True:
     elif command == "richiediportamicrofoni":
         # Genera due numeri casuali fra 35000 e 40000
         print(f"Richiesta configurazione trasmissione dei microfoni.")
+        with lock:
+                orario_di_riferimento = datetime.now()
+        thread = threading.Thread(target=controllo_orario)
+        thread.daemon = True  # Imposta il thread come daemon per terminarlo quando il programma principale termina
+        thread.start()
         numero1 = random.randint(35000, 40000)
         numero2 = random.randint(35000, 40000)
-        
-
         # Invia la risposta al client separando i numeri con "#"
         pid_ricezione = esegui_script("citofono_trasmissione.py",numero1,numero2)
         print(f"memorizzato pid di ricezione: {pid_ricezione}")
@@ -96,7 +115,10 @@ while True:
     elif command == "status":
         risposta = "green"
         client_socket.send(risposta.encode())
-
+    elif command == "mantieniconnesione":
+        with lock:
+                orario_di_riferimento = datetime.now()
+        print(f"Ultima comunicazione dalla cornetta: {orario_di_riferimento}")
     else:
         print("Comando sconosciuto.")
 

@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
         visualizzatore = findViewById(R.id.visualizzatorestatus);
         redCircleImageView.setId(56);
         greenCircleImageView.setId(57);
+        mantieniconnesione();
 
 
 
@@ -240,18 +241,18 @@ public class MainActivity extends AppCompatActivity {
         setMute();
     }
     public boolean mute = false;
-    public boolean mute_microfono_speaker = true;
+    public boolean mute_microfono_speaker = false;
     public void setMute(){
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
                 if (mute) {
                     mute = false;
-                    inviaComando("muteoff",54321);
+                    inviaComando("muteoff",porta_altoparlante_controllo);
                     setSpeaker();
                 } else {
                     mute = true;
-                    inviaComando("muteonn",54321);
+                    inviaComando("muteonn",porta_altoparlante_controllo);
                     setSpeaker();
 
                 }
@@ -333,7 +334,22 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-
+    public void mantieniconnesione(){
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true){
+                    inviaComando("mantieniconnesione",portacomandiesecutore);
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+        t.start();
+    }
     private void receiveAudio() {
         try {
             Socket socket = new Socket(citofono_ip, porta_microfono); //porta_microfono
