@@ -55,8 +55,9 @@ public class MainActivity extends AppCompatActivity {
     public int porta_microfono_controllo = 0;
     ImageView redCircleImageView;
     ImageView greenCircleImageView;
-    public int portacomandiesecutore = 12343; // porta del comando esecutore è anche quella che viene interrogata all'inizio e che restituisce le porte dei microfoni e degli altoparlanti
-
+    public String status_citofono = "red";
+    public int portacomandiesecutore = 0; // porta del comando esecutore è anche quella che viene interrogata all'inizio e che restituisce le porte dei microfoni e degli altoparlanti
+    //la porta dell'esecutore viene comunque aggiornata all'avvio.
     // Creare un ImageView per il cerchio verde
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +74,21 @@ public class MainActivity extends AppCompatActivity {
         visualizzatore = findViewById(R.id.visualizzatorestatus);
         redCircleImageView.setId(56);
         greenCircleImageView.setId(57);
+        visualizzatore.addView(redCircleImageView);
+        visualizzatore.addView(greenCircleImageView);
+        Thread threadporta = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                portacomandiesecutore = Integer.parseInt(PortUtility.getPort());
+                Thread.currentThread().interrupt();
+            }
+        });
+        threadporta.start();
+        while (portacomandiesecutore == 0) {
+
+        }
         mantieniconnesione();
+        azionaCitofono();
 
 
         startButton.setOnClickListener(new View.OnClickListener() {
@@ -83,11 +98,10 @@ public class MainActivity extends AppCompatActivity {
                     if (!is_alredy_recording_pressed) {
                         view.setBackgroundColor(Color.parseColor("#00FF00"));
                         is_alredy_recording_pressed = true;
-                        azionaCitofono();
+
                     } else {
                         view.setBackgroundColor(Color.parseColor("#FF0000"));
                         is_alredy_recording_pressed = false;
-                        azionaCitofono();
                     }
                     startAudioStreaming();
                 } else {
@@ -129,31 +143,39 @@ public class MainActivity extends AppCompatActivity {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                String portemicrofoni = inviaComando("richiediportamicrofoni", portacomandiesecutore);
-                String portealtoparlanti = inviaComando("richiediportaaltoparlante", portacomandiesecutore);
-                String[] portealtoparlanti_split = portealtoparlanti.split("#");
-                porta_altoparlante = Integer.parseInt(portealtoparlanti_split[0]);
-                porta_altoparlante_controllo = Integer.parseInt(portealtoparlanti_split[1]);
-                String[] portemicrofoni_split = portemicrofoni.split("#");
-                porta_microfono = Integer.parseInt(portemicrofoni_split[0]);
-                porta_microfono_controllo = Integer.parseInt(portemicrofoni_split[1]);
-                portelog.setText("PM: " + portemicrofoni + " PA:" + portealtoparlanti);
-                String status = inviaComando("status", portacomandiesecutore);
-                if (status.equals("green")) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateStatus(true);
-                        }
-                    });
+                while (true) {
+                    String status = inviaComando("status", portacomandiesecutore);
+                    if (status.equals("green")) {
+                        //se il citofono è disponibile procedo con l'attuazione delle operazioni di connessione richiedendo le porte di comunicazione al server
+                        String portemicrofoni = inviaComando("richiediportamicrofoni", portacomandiesecutore);
+                        String portealtoparlanti = inviaComando("richiediportaaltoparlante", portacomandiesecutore);
+                        String[] portealtoparlanti_split = portealtoparlanti.split("#");
+                        porta_altoparlante = Integer.parseInt(portealtoparlanti_split[0]);
+                        porta_altoparlante_controllo = Integer.parseInt(portealtoparlanti_split[1]);
+                        String[] portemicrofoni_split = portemicrofoni.split("#");
+                        porta_microfono = Integer.parseInt(portemicrofoni_split[0]);
+                        porta_microfono_controllo = Integer.parseInt(portemicrofoni_split[1]);
+                        portelog.setText("PM: " + portemicrofoni + " PA:" + portealtoparlanti);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateStatus(true);
+                            }
+                        });
+                        break;
 
-                } else {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateStatus(false);
-                        }
-                    });
+                    } else {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                updateStatus(false);
+                                portelog.setText("Il citofono non è disponibile.");
+                            }
+                        });
+                    }
+
+
+
                 }
                 Thread.currentThread().interrupt();
             }
@@ -161,6 +183,7 @@ public class MainActivity extends AppCompatActivity {
         thread.start();
 
     }
+
 
     private ImageView createCircleImageView(int drawableResourceId) {
         ImageView imageView = new ImageView(this);
@@ -170,12 +193,16 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateStatus(boolean isGreen) {
         if (isGreen) {
-            removeViewById(56);
-            visualizzatore.addView(greenCircleImageView);
+            //removeViewById(56);
+            findViewById(56).setVisibility(View.VISIBLE);
+            findViewById(56).setVisibility(View.GONE);
+            findViewById(56).setVisibility(View.INVISIBLE);
 
         } else {
-            removeViewById(57);
-            visualizzatore.addView(redCircleImageView);
+            //removeViewById(57);
+            findViewById(56).setVisibility(View.VISIBLE);
+            findViewById(57).setVisibility(View.GONE);
+            findViewById(57).setVisibility(View.INVISIBLE);
 
         }
     }
@@ -264,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
             recordingThread.start();
         }
-            setMute();
+        setMute();
 
     }
 

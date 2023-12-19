@@ -6,6 +6,8 @@ import netifaces as ni
 import sounddevice
 import sys
 
+
+#questo trasmette l'audio al cellulare
 muted = False
 muted_lock = threading.Lock()
 

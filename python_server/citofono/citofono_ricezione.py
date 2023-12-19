@@ -4,7 +4,7 @@ import os
 
 # Rimuovi l'impostazione della variabile PYALSA_DEBUG
 os.environ.pop('PYALSA_DEBUG', None)
-
+#questo riceve l'audio dal cellulare
 # Configura il logger per disabilitare i log di ALSA
 logging.getLogger('pyalsa').setLevel(logging.CRITICAL)
 
@@ -60,6 +60,8 @@ class AudioStreamHandler(socketserver.StreamRequestHandler):
                             p.terminate()
                             break
                         stream.write(data)
+                    
+
                 except Exception as e:
                     print(f"Errore nella ricezione dei dati audio: {e}")
                 finally:
