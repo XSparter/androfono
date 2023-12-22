@@ -1,6 +1,0 @@
-<!-- res/drawable/red_circle.xml -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="#FF0000" /> <!-- Colore rosso (#FF0000) -->
-    <size android:width="50dp" android:height="50dp" /> <!-- Dimensioni del cerchio -->
-</shape>

@@ -1,6 +1,7 @@
 package org.gaussx.androfono;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.media.AudioFormat;
@@ -10,15 +11,23 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.util.Log;
+import be.tarsos.dsp.AudioEvent;
+import be.tarsos.dsp.filters.LowPassFS;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 
 import java.io.BufferedReader;
 import java.io.DataInputStream;
@@ -28,7 +37,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -51,31 +59,33 @@ public class MainActivity extends AppCompatActivity {
     public boolean is_alredy_recording_pressed = false;
     public int porta_altoparlante = 0;
     public int porta_microfono = 0;
+    private static final int SAMPLE_RATE = 44100;
+    private static final int WINDOW_SIZE = 3;
     public int porta_altoparlante_controllo = 0;
     public int porta_microfono_controllo = 0;
     ImageView redCircleImageView;
+    TextView viewdilog;
     ImageView greenCircleImageView;
     public String status_citofono = "red";
     public int portacomandiesecutore = 0; // porta del comando esecutore è anche quella che viene interrogata all'inizio e che restituisce le porte dei microfoni e degli altoparlanti
+
     //la porta dell'esecutore viene comunque aggiornata all'avvio.
     // Creare un ImageView per il cerchio verde
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        redCircleImageView = createCircleImageView(R.drawable.red_circle);
-        greenCircleImageView = createCircleImageView(R.drawable.green_circle);
-        Button startButton = findViewById(R.id.startButton);
-        Button playButton = findViewById(R.id.playButton);
+        redCircleImageView = createCircleImageView(R.drawable.red_ball);
+        viewdilog = findViewById(R.id.logterminal);
+        greenCircleImageView = createCircleImageView(R.drawable.green_ball);
+        Button parlalacifotono = findViewById(R.id.startButton);
+        Button ascoltacitofono = findViewById(R.id.playButton);
         Button apricancello = findViewById(R.id.azionacancello);
         Button azionacitofono = findViewById(R.id.azionacitofono);
         EditText ip_field = findViewById(R.id.ip_citofono);
-        EditText portelog = findViewById(R.id.portelog);
+        TextView portelog = findViewById(R.id.portelog);
         visualizzatore = findViewById(R.id.visualizzatorestatus);
-        redCircleImageView.setId(56);
-        greenCircleImageView.setId(57);
-        visualizzatore.addView(redCircleImageView);
-        visualizzatore.addView(greenCircleImageView);
         Thread threadporta = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -89,33 +99,68 @@ public class MainActivity extends AppCompatActivity {
         }
         mantieniconnesione();
         azionaCitofono();
+        aggiornacam();
 
-
-        startButton.setOnClickListener(new View.OnClickListener() {
+        parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
             @Override
-            public void onClick(View view) {
+            public boolean onTouch(View view, MotionEvent motionEvent) {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    if (!is_alredy_recording_pressed) {
-                        view.setBackgroundColor(Color.parseColor("#00FF00"));
+                    if (motionEvent.getAction() == MotionEvent.ACTION_DOWN && !is_alredy_recording_pressed) {
+                        //view.setBackgroundColor(Color.parseColor("#00FF00"));
                         is_alredy_recording_pressed = true;
+                        view.setBackground(getDrawable(R.drawable.button_dark_1_state_1));
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                inviaComando("azionacitofono", portacomandiesecutore);
+                                Thread.currentThread().interrupt();
+                            }
+                        });
+                        thread.start();
+                        startAudioStreaming();
+                    } else if (motionEvent.getAction() == MotionEvent.ACTION_UP && is_alredy_recording_pressed) {
 
-                    } else {
-                        view.setBackgroundColor(Color.parseColor("#FF0000"));
                         is_alredy_recording_pressed = false;
+                        view.setBackground(getDrawable(R.drawable.button_dark_1_state_0));
+                        Thread thread = new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                inviaComando("disattivacitofono", portacomandiesecutore);
+                                Thread.currentThread().interrupt();
+                            }
+                        });
+                        thread.start();
+                        startAudioStreaming();
                     }
-                    startAudioStreaming();
-                } else {
-                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+
                 }
+                return true;
             }
         });
+        /** parlalacifotono.setOnClickListener(new View.OnClickListener() {
+        @Override public void onClick(View view) {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        if (!is_alredy_recording_pressed) {
+        view.setBackgroundColor(Color.parseColor("#00FF00"));
+        is_alredy_recording_pressed = true;
+
+        } else {
+        view.setBackgroundColor(Color.parseColor("#FF0000"));
+        is_alredy_recording_pressed = false;
+        }
+        startAudioStreaming();
+        } else {
+        requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+        }
+        }
+        }); */
         apricancello.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        inviaComando("apricancello", 12343);
+                        inviaComando("apricancello", portacomandiesecutore);
                     }
                 });
                 thread.start();
@@ -130,12 +175,14 @@ public class MainActivity extends AppCompatActivity {
         });
         azionacitofono.setVisibility(View.INVISIBLE);
         azionacitofono.setVisibility(View.GONE);
+        ascoltacitofono.setVisibility(View.INVISIBLE);
+        ascoltacitofono.setVisibility(View.GONE);
 
-        playButton.setOnClickListener(new View.OnClickListener() {
+        ascoltacitofono.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 
-                startAudioPlaying();
+                startAudioPlaying(true);
             }
         });
         // ora inizializzo la connessione con il server
@@ -175,7 +222,6 @@ public class MainActivity extends AppCompatActivity {
                     }
 
 
-
                 }
                 Thread.currentThread().interrupt();
             }
@@ -191,18 +237,28 @@ public class MainActivity extends AppCompatActivity {
         return imageView;
     }
 
+    public boolean isReady = false;
+    public void aggiornacam(){
+        Thread t0 = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(true){
+                    ImageView camera = findViewById(R.id.telecamera);
+                }
+            }
+        });
+        t0.start();
+    }
     private void updateStatus(boolean isGreen) {
         if (isGreen) {
             //removeViewById(56);
-            findViewById(56).setVisibility(View.VISIBLE);
-            findViewById(56).setVisibility(View.GONE);
-            findViewById(56).setVisibility(View.INVISIBLE);
+            findViewById(R.id.visualizzatorestatus).setBackground(getDrawable(R.drawable.green_ball));
+            isReady = true;
 
         } else {
             //removeViewById(57);
-            findViewById(56).setVisibility(View.VISIBLE);
-            findViewById(57).setVisibility(View.GONE);
-            findViewById(57).setVisibility(View.INVISIBLE);
+            findViewById(R.id.visualizzatorestatus).setBackground(getDrawable(R.drawable.red_ball));
+            isReady = false;
 
         }
     }
@@ -211,7 +267,13 @@ public class MainActivity extends AppCompatActivity {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                inviaComando("azionacitofono", portacomandiesecutore);
+                while (!isReady) {
+                }
+
+                ;
+                startAudioPlaying(false); //questo è il metodo che fa partire l'audio all'avvio del programma. Commentando
+                //questa riga si può fare in modo che l'audio parta solo quando si preme il tasto play
+                //attualmente il tasto play viene nascosto programmaticamente.
             }
         });
         thread.start();
@@ -271,27 +333,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startAudioStreaming() {
-        if (!isRecording) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                return;
-            }
-            audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
-                    AUDIO_SAMPLE_RATE, AUDIO_CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE);
-
-            audioRecord.startRecording();
-            isRecording = true;
-
-            recordingThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    socketTask = new SocketTask();
-                    socketTask.run();
+        if (isReady) {
+            if (!isRecording) {
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    return;
                 }
-            });
+                audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
+                        AUDIO_SAMPLE_RATE, AUDIO_CHANNEL_CONFIG, AUDIO_FORMAT, BUFFER_SIZE);
 
-            recordingThread.start();
+                audioRecord.startRecording();
+                isRecording = true;
+
+                recordingThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        socketTask = new SocketTask();
+                        socketTask.run();
+                    }
+                });
+
+                recordingThread.start();
+            }
+            setMute();
+        } else {
+            Log.d("citofono", "il citofono non è pronto");
+            Toast.makeText(this, "Il citofono non è pronto", Toast.LENGTH_SHORT).show();
+            return;
         }
-        setMute();
+
 
     }
 
@@ -357,29 +426,37 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void startAudioPlaying() {
-        if (!isPlaying) {
-            isPlaying = true;
-            audioTrack = new AudioTrack(
-                    AudioManager.STREAM_MUSIC, //questo riproduce dallo speaker
-                    //AudioManager.STREAM_VOICE_CALL, //questo riproduce dall'auricolare
-                    AUDIO_SAMPLE_RATE,
-                    AudioFormat.CHANNEL_OUT_MONO,
-                    AUDIO_FORMAT,
-                    BUFFER_SIZE,
-                    AudioTrack.MODE_STREAM);
+    private void startAudioPlaying(boolean toastcontroller) {
+        if (isReady) {
+            if (!isPlaying) {
+                isPlaying = true;
+                audioTrack = new AudioTrack(
+                        AudioManager.STREAM_MUSIC, //questo riproduce dallo speaker
+                        //AudioManager.STREAM_VOICE_CALL, //questo riproduce dall'auricolare
+                        AUDIO_SAMPLE_RATE,
+                        AudioFormat.CHANNEL_OUT_MONO,
+                        AUDIO_FORMAT,
+                        BUFFER_SIZE,
+                        AudioTrack.MODE_STREAM);
 
-            audioTrack.play();
+                audioTrack.play();
 
-            Thread playThread = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    receiveAudio();
-                }
-            });
+                Thread playThread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        receiveAudio();
+                    }
+                });
 
-            playThread.start();
+                playThread.start();
+            }
+        } else {
+            Log.d("citofono", "il citofono non è pronto");
+            if (toastcontroller) {
+                Toast.makeText(this, "Il citofono non è pronto", Toast.LENGTH_SHORT).show();
+            }
         }
+
 
     }
 
@@ -394,6 +471,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private int numerodirefresh = 0;
+
     public void mantieniconnesione() {
         Thread t = new Thread(new Runnable() {
             @Override
@@ -402,6 +481,14 @@ public class MainActivity extends AppCompatActivity {
                     inviaComando("mantieniconnesione", portacomandiesecutore);
                     try {
                         Thread.sleep(1000);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                viewdilog.setText("Refresh inviati: " + String.valueOf(numerodirefresh));
+                            }
+                        });
+
+                        numerodirefresh++;
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -411,24 +498,43 @@ public class MainActivity extends AppCompatActivity {
         t.start();
     }
 
-    private void receiveAudio() {
-        try {
-            Socket socket = new Socket(citofono_ip, porta_microfono); //porta_microfono
-            DataInputStream inputStream = new DataInputStream(socket.getInputStream());
 
-            byte[] buffer = new byte[BUFFER_SIZE];
-
-            while (isPlaying) {
-                int bytesRead = inputStream.read(buffer, 0, BUFFER_SIZE);
-                if (bytesRead == -1) {
-                    break;  // Fine del flusso, esci dal ciclo
-                }
-                audioTrack.write(buffer, 0, bytesRead);
+    private void applyLowPassFilter(byte[] buffer, int bytesRead) {
+        for (int i = 0; i < bytesRead; i++) {
+            // Calcola la media mobile
+            int sum = 0;
+            for (int j = Math.max(0, i - WINDOW_SIZE / 2); j < Math.min(bytesRead, i + WINDOW_SIZE / 2 + 1); j++) {
+                sum += buffer[j];
             }
+            buffer[i] = (byte) (sum / WINDOW_SIZE);
+        }
+    }
+    private void receiveAudio() {
+        while (true) {
+            try {
+                Socket socket = new Socket(citofono_ip, porta_microfono); //porta_microfono
+                DataInputStream inputStream = new DataInputStream(socket.getInputStream());
 
-            socket.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+                byte[] buffer = new byte[BUFFER_SIZE];
+
+                while (isPlaying) {
+                    int bytesRead = inputStream.read(buffer, 0, BUFFER_SIZE);
+                    //Log.d("dimensione buffer: ", String.valueOf(BUFFER_SIZE));
+                    //if (bytesRead == -1) {
+                    //  break;  // Fine del flusso, esci dal ciclo
+                    //applyLowPassFilter(buffer, bytesRead);
+                    AudioProcessor.processAudioBuffer(buffer, bytesRead);
+
+                    //} //questa parte fa chiudere il programma se il citofono chiude la connessione, non so se è il caso di lasciarla o meno, per ora la commento
+                    audioTrack.write(buffer, 0, bytesRead);
+
+                }
+
+                socket.close();
+            } catch (IOException e) {
+
+                e.printStackTrace();
+            }
         }
     }
 

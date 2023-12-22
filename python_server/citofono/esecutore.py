@@ -93,7 +93,7 @@ lock = threading.Lock()
 while True:
     # Accetta la connessione
     client_socket, client_address = server_socket.accept()
-    print("Connection from:", client_address)
+    #print("Connection from:", client_address)
 
     # Ricevi il comando
     command = client_socket.recv(1024).decode()
@@ -108,7 +108,9 @@ while True:
     elif command == "azionacitofono":
         print("Activate buzzer.")
         GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH)
-
+    elif command == "disattivacitofono":
+        print("Deactivate buzzer.")
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
     elif command == "richiediportamicrofoni":
         print("Requesting microphone transmission configuration.")
         with lock:
@@ -118,7 +120,7 @@ while True:
         thread.start()
         numero1 = random.randint(35000, 40000)
         numero2 = random.randint(35000, 40000)
-        pid_ricezione = esegui_script("citofono_trasmissione.py", numero1, numero2)
+        pid_ricezione = esegui_script("citofono_trasmissione.py", numero1, numero2) 
         print(f"Stored reception PID: {pid_ricezione}")
         risposta = f"{numero1}#{numero2}"
         print(f"Microphone Port and Control Port: {risposta}")
@@ -142,7 +144,7 @@ while True:
         with lock:
             orario_di_riferimento = datetime.now()
             variabile_status = "green"
-        print(f"Last communication from the buzzer: {orario_di_riferimento}")
+        #print(f"Last communication from the buzzer: {orario_di_riferimento}")
 
     else:
         print("Unknown command.")
