@@ -63,7 +63,7 @@ def controllo_orario():
             GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
             print(f"I deactivated the buzzer.")
             with lock:
-                variabile_status = "red"
+                variabile_status = "green"
             break
 
         time.sleep(1)
@@ -82,7 +82,7 @@ porta_esecutore = random.randint(35000, 40000)
 print(set_port(porta_esecutore))
 server_socket.bind(('0.0.0.0', porta_esecutore))
 server_socket.listen(1)
-GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
+GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #questo gestisce il pin di azionamento del citofono.
 print("Current working directory:", os.getcwd())
 print("Please check that the audio configuration in raspi-config is set to USB if you hear noise.")
 print(f"Server waiting for connections... on port {porta_esecutore}")
@@ -107,10 +107,10 @@ while True:
 
     elif command == "azionacitofono":
         print("Activate buzzer.")
-        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH)
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
     elif command == "disattivacitofono":
         print("Deactivate buzzer.")
-        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH)
     elif command == "richiediportamicrofoni":
         print("Requesting microphone transmission configuration.")
         with lock:

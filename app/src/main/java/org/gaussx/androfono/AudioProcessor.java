@@ -4,7 +4,7 @@ import be.tarsos.dsp.filters.LowPassFS;
 public class AudioProcessor {
 
     private static final int SAMPLE_RATE = 44100;
-    private static final int CUTOFF_FREQUENCY = 10; // Hz
+    private static final int CUTOFF_FREQUENCY = 1; // Hz
     private static final double RC = 1.0 / (2.0 * Math.PI * CUTOFF_FREQUENCY);
 
     private static double previousFilteredValue = 0;

@@ -109,28 +109,13 @@ public class MainActivity extends AppCompatActivity {
                         //view.setBackgroundColor(Color.parseColor("#00FF00"));
                         is_alredy_recording_pressed = true;
                         view.setBackground(getDrawable(R.drawable.button_dark_1_state_1));
-                        Thread thread = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                inviaComando("azionacitofono", portacomandiesecutore);
-                                Thread.currentThread().interrupt();
-                            }
-                        });
-                        thread.start();
-                        startAudioStreaming();
+                        controlloidlecitofono();
+                        startAudioStreaming(false);
                     } else if (motionEvent.getAction() == MotionEvent.ACTION_UP && is_alredy_recording_pressed) {
 
                         is_alredy_recording_pressed = false;
                         view.setBackground(getDrawable(R.drawable.button_dark_1_state_0));
-                        Thread thread = new Thread(new Runnable() {
-                            @Override
-                            public void run() {
-                                inviaComando("disattivacitofono", portacomandiesecutore);
-                                Thread.currentThread().interrupt();
-                            }
-                        });
-                        thread.start();
-                        startAudioStreaming();
+                        startAudioStreaming(true);
                     }
 
                 }
@@ -262,6 +247,35 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+    private int contatoreidle = 0;
+    private boolean refresher = true;
+    private void controlloidlecitofono(){
+        if(refresher){
+            refresher = false;
+            Thread t = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while(true){
+                        try {
+                            if(contatoreidle > 3){
+                                refresher = true;
+                                inviaComando("disattivacitofono", portacomandiesecutore);
+                                startAudioStreaming(false);
+                                Thread.currentThread().interrupt();
+                            }
+                            Thread.sleep(1000);
+                            contatoreidle++;
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            });
+            t.start();
+        }else{
+            contatoreidle = 0;
+        }
+    }
 
     private void azionaCitofono() {
         Thread thread = new Thread(new Runnable() {
@@ -269,8 +283,14 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 while (!isReady) {
                 }
-
-                ;
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        inviaComando("azionacitofono", portacomandiesecutore);
+                        Thread.currentThread().interrupt();
+                    }
+                });
+                thread.start();
                 startAudioPlaying(false); //questo è il metodo che fa partire l'audio all'avvio del programma. Commentando
                 //questa riga si può fare in modo che l'audio parta solo quando si preme il tasto play
                 //attualmente il tasto play viene nascosto programmaticamente.
@@ -332,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
         return risposta;
     }
 
-    private void startAudioStreaming() {
+    private void startAudioStreaming(boolean mutestatuscontroller) {
         if (isReady) {
             if (!isRecording) {
                 if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -354,7 +374,7 @@ public class MainActivity extends AppCompatActivity {
 
                 recordingThread.start();
             }
-            setMute();
+            setMute(mutestatuscontroller);
         } else {
             Log.d("citofono", "il citofono non è pronto");
             Toast.makeText(this, "Il citofono non è pronto", Toast.LENGTH_SHORT).show();
@@ -366,17 +386,21 @@ public class MainActivity extends AppCompatActivity {
 
     public boolean mute = true; //verificare la gestione del mute 18 12 2023
     public boolean mute_microfono_speaker = false;
+    public boolean old_mute = false;
 
-    public void setMute() {
+    public void setMute(boolean controller) {
+        mute = controller;
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                if (mute) {
-                    mute = false;
+                if (mute == true && mute != old_mute) {
+                    //mute = false;
+                    old_mute = mute;
                     inviaComando("muteoff", porta_altoparlante_controllo);
                     setSpeaker();
-                } else {
-                    mute = true;
+                } else if (mute == false && mute != old_mute) {
+                    // = true;
+                    old_mute = mute;
                     inviaComando("muteonn", porta_altoparlante_controllo);
                     setSpeaker();
 
