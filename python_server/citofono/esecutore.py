@@ -13,7 +13,10 @@ from requests.auth import HTTPBasicAuth
 
 # Configura i pin GPIO
 PIN_APRICANCELLO = 27
-PIN_AZIONA_CITOFONO = 18
+PIN_AZIONA_CITOFONO = 23 #18
+PIN_AZIONA_CITOFONO2 = 22 #18
+#nota che per il modulo relè si azionano quando fai LOW, chissà quale minchia è il motivo.
+#occhio che attualmente, dato che sto usando un modulo che supporta i LOW per azionarsi, tutti i "LOW" corrisppndono al relè azionato.
 pid_ricezione = None
 pid_trasmissione = None
 orario_di_riferimento = None
@@ -60,7 +63,8 @@ def controllo_orario():
 
         if orario_di_riferimento is not None and now > orario_di_riferimento + timedelta(seconds=5):
             termina_processi()
-            GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
+            GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
+            GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.HIGH)
             print(f"I deactivated the buzzer.")
             with lock:
                 variabile_status = "green"
@@ -75,6 +79,7 @@ atexit.register(termina_processi)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(PIN_APRICANCELLO, GPIO.OUT)
 GPIO.setup(PIN_AZIONA_CITOFONO, GPIO.OUT)
+GPIO.setup(PIN_AZIONA_CITOFONO2, GPIO.OUT)
 
 # Crea un socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -82,7 +87,8 @@ porta_esecutore = random.randint(35000, 40000)
 print(set_port(porta_esecutore))
 server_socket.bind(('0.0.0.0', porta_esecutore))
 server_socket.listen(1)
-GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW) #questo gestisce il pin di azionamento del citofono.
+GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #questo gestisce il pin di azionamento del citofono.
+GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.HIGH) #questo gestisce il pin di azionamento del citofono.
 print("Current working directory:", os.getcwd())
 print("Please check that the audio configuration in raspi-config is set to USB if you hear noise.")
 print(f"Server waiting for connections... on port {porta_esecutore}")
@@ -107,10 +113,12 @@ while True:
 
     elif command == "azionacitofono":
         print("Activate buzzer.")
-        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH)
+        GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.HIGH)
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
     elif command == "disattivacitofono":
         print("Deactivate buzzer.")
-        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW)
+        GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.LOW)
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
     elif command == "richiediportamicrofoni":
         print("Requesting microphone transmission configuration.")
         with lock:

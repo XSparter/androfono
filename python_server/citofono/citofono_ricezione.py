@@ -40,34 +40,31 @@ def set_muted(value):
 def get_muted():
     with muted_lock:
         return muted
-
+        
 class AudioStreamHandler(socketserver.StreamRequestHandler):
     def handle(self):
         print(f"Accepted connection from {self.client_address}")
-        while True:
-            if not get_muted():
-                p = pyaudio.PyAudio()
-                stream = p.open(format=pyaudio.paInt16, channels=1, rate=44100, output=True)
+        p = pyaudio.PyAudio()
+        stream = p.open(format=pyaudio.paInt16, channels=1, rate=44100, output=True)
 
-                try:
-                    while True:
-                        data = self.rfile.read(1024)
-                        if not data:
-                            break
-                        if get_muted():
-                            stream.stop_stream()
-                            stream.close()
-                            p.terminate()
-                            break
-                        stream.write(data)
-                    
+        try:
+            while True:
+                if not get_muted():
+                    data = self.rfile.read(512)
+                    if not data:
+                        break
+                    stream.write(data)
+                else:
+                    # Se è mutato, continua a leggere i dati senza riprodurli
+                    self.rfile.read(512)
+        except Exception as e:
+            print(f"Errore nella ricezione dei dati audio: {e}")
+        finally:
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
 
-                except Exception as e:
-                    print(f"Errore nella ricezione dei dati audio: {e}")
-                finally:
-                    stream.stop_stream()
-                    stream.close()
-                    p.terminate()
+
 
 class CommandHandler(socketserver.BaseRequestHandler):
     def handle(self):

@@ -104,49 +104,49 @@ public class MainActivity extends AppCompatActivity {
         azionaCitofono();
         aggiornacam();
 
-       /** parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    //Log.d("citofono", "Sto tentando di azionare il citofono --> inside");
-                    //Toast.makeText(MainActivity.this, "Sto tentando di azionare il microfono", Toast.LENGTH_SHORT).show();
-                    if (motionEvent.getAction() == MotionEvent.ACTION_DOWN && !is_alredy_recording_pressed) {
-                        //view.setBackgroundColor(Color.parseColor("#00FF00"));
-                        Log.d("citofono", "Il microfono del citofono è stato azionato");
-                        is_alredy_recording_pressed = true;
-                        view.setBackground(getDrawable(R.drawable.button_dark_1_state_1));
-                        controlloidlecitofono(); //questo serve semplicemente perché talvolta non riesco a rilevare l'action up
-                        startAudioStreaming(false);
-                    } else if (motionEvent.getAction() == MotionEvent.ACTION_UP && is_alredy_recording_pressed) {
-                        Log.d("citofono", "Il microfono del citofono è stato disattivato");
-                        is_alredy_recording_pressed = false;
-                        view.setBackground(getDrawable(R.drawable.button_dark_1_state_0));
-                        startAudioStreaming(true);
-                    }
-
-                } else {
-                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
-                }
-                return true;
-            }
-        }); **/
-         parlalacifotono.setOnClickListener(new View.OnClickListener() {
-        @Override public void onClick(View view) {
+        /** parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
+        @Override public boolean onTouch(View view, MotionEvent motionEvent) {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-        if (!is_alredy_recording_pressed) {
-        view.setBackgroundColor(Color.parseColor("#00FF00"));
+        //Log.d("citofono", "Sto tentando di azionare il citofono --> inside");
+        //Toast.makeText(MainActivity.this, "Sto tentando di azionare il microfono", Toast.LENGTH_SHORT).show();
+        if (motionEvent.getAction() == MotionEvent.ACTION_DOWN && !is_alredy_recording_pressed) {
+        //view.setBackgroundColor(Color.parseColor("#00FF00"));
+        Log.d("citofono", "Il microfono del citofono è stato azionato");
         is_alredy_recording_pressed = true;
-            startAudioStreaming(true);
-        } else {
-        view.setBackgroundColor(Color.parseColor("#FF0000"));
+        view.setBackground(getDrawable(R.drawable.button_dark_1_state_1));
+        controlloidlecitofono(); //questo serve semplicemente perché talvolta non riesco a rilevare l'action up
+        startAudioStreaming(false);
+        } else if (motionEvent.getAction() == MotionEvent.ACTION_UP && is_alredy_recording_pressed) {
+        Log.d("citofono", "Il microfono del citofono è stato disattivato");
         is_alredy_recording_pressed = false;
-            startAudioStreaming(false);
+        view.setBackground(getDrawable(R.drawable.button_dark_1_state_0));
+        startAudioStreaming(true);
         }
 
         } else {
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
         }
+        return true;
         }
+        }); **/
+        parlalacifotono.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    if (!is_alredy_recording_pressed) {
+                        view.setBackgroundColor(Color.parseColor("#00FF00"));
+                        is_alredy_recording_pressed = true;
+                        startAudioStreaming(true);
+                    } else {
+                        view.setBackgroundColor(Color.parseColor("#FF0000"));
+                        is_alredy_recording_pressed = false;
+                        startAudioStreaming(false);
+                    }
+
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+                }
+            }
         });
         apricancello.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -315,6 +315,27 @@ public class MainActivity extends AppCompatActivity {
         });
         thread.start();
     }
+    private void disattivacitofono() {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!isReady) {
+                }
+                Thread thread = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        inviaComando("disattivacitofono", portacomandiesecutore);
+                        Thread.currentThread().interrupt();
+                    }
+                });
+                thread.start();
+                startAudioPlaying(false); //questo è il metodo che fa partire l'audio all'avvio del programma. Commentando
+                //questa riga si può fare in modo che l'audio parta solo quando si preme il tasto play
+                //attualmente il tasto play viene nascosto programmaticamente.
+            }
+        });
+        thread.start();
+    }
 
     public String citofono_ip = "";
 
@@ -414,11 +435,13 @@ public class MainActivity extends AppCompatActivity {
                     //mute = false;
                     old_mute = mute;
                     inviaComando("muteoff", porta_altoparlante_controllo);
+                    azionaCitofono();
                     setSpeaker();
                 } else if (mute == false && mute != old_mute) {
                     // = true;
                     old_mute = mute;
                     inviaComando("muteonn", porta_altoparlante_controllo);
+                    disattivacitofono();
                     setSpeaker();
 
                 }
@@ -589,10 +612,11 @@ public class MainActivity extends AppCompatActivity {
                 DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
 
                 byte[] buffer = new byte[BUFFER_SIZE];
-                //Log.d("dimensione buffer registratore: ", String.valueOf(BUFFER_SIZE));
+                // Log.d("dimensione buffer registratore: ", String.valueOf(BUFFER_SIZE));
                 while (isRecording) {
                     int bytesRead = audioRecord.read(buffer, 0, BUFFER_SIZE);
                     outputStream.write(buffer, 0, bytesRead);
+
                 }
 
                 socket.close();
