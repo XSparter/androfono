@@ -11,8 +11,10 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.util.Log;
+
 import be.tarsos.dsp.AudioEvent;
 import be.tarsos.dsp.filters.LowPassFS;
+
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,6 +27,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -101,44 +104,50 @@ public class MainActivity extends AppCompatActivity {
         azionaCitofono();
         aggiornacam();
 
-        parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
+       /** parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    //Log.d("citofono", "Sto tentando di azionare il citofono --> inside");
+                    //Toast.makeText(MainActivity.this, "Sto tentando di azionare il microfono", Toast.LENGTH_SHORT).show();
                     if (motionEvent.getAction() == MotionEvent.ACTION_DOWN && !is_alredy_recording_pressed) {
                         //view.setBackgroundColor(Color.parseColor("#00FF00"));
+                        Log.d("citofono", "Il microfono del citofono è stato azionato");
                         is_alredy_recording_pressed = true;
                         view.setBackground(getDrawable(R.drawable.button_dark_1_state_1));
-                        controlloidlecitofono();
+                        controlloidlecitofono(); //questo serve semplicemente perché talvolta non riesco a rilevare l'action up
                         startAudioStreaming(false);
                     } else if (motionEvent.getAction() == MotionEvent.ACTION_UP && is_alredy_recording_pressed) {
-
+                        Log.d("citofono", "Il microfono del citofono è stato disattivato");
                         is_alredy_recording_pressed = false;
                         view.setBackground(getDrawable(R.drawable.button_dark_1_state_0));
                         startAudioStreaming(true);
                     }
 
+                } else {
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
                 }
                 return true;
             }
-        });
-        /** parlalacifotono.setOnClickListener(new View.OnClickListener() {
+        }); **/
+         parlalacifotono.setOnClickListener(new View.OnClickListener() {
         @Override public void onClick(View view) {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
         if (!is_alredy_recording_pressed) {
         view.setBackgroundColor(Color.parseColor("#00FF00"));
         is_alredy_recording_pressed = true;
-
+            startAudioStreaming(true);
         } else {
         view.setBackgroundColor(Color.parseColor("#FF0000"));
         is_alredy_recording_pressed = false;
+            startAudioStreaming(false);
         }
-        startAudioStreaming();
+
         } else {
         requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 1);
         }
         }
-        }); */
+        });
         apricancello.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -223,17 +232,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public boolean isReady = false;
-    public void aggiornacam(){
+
+    public void aggiornacam() {
+        Toast.makeText(this, "Aggiornamento cam.", Toast.LENGTH_SHORT).show();
         Thread t0 = new Thread(new Runnable() {
             @Override
             public void run() {
-                while(true){
+                while (true) {
                     ImageView camera = findViewById(R.id.telecamera);
                 }
             }
         });
         t0.start();
     }
+
     private void updateStatus(boolean isGreen) {
         if (isGreen) {
             //removeViewById(56);
@@ -247,21 +259,26 @@ public class MainActivity extends AppCompatActivity {
 
         }
     }
+
     private int contatoreidle = 0;
     private boolean refresher = true;
-    private void controlloidlecitofono(){
-        if(refresher){
+
+    private void controlloidlecitofono() {
+        if (refresher) {
             refresher = false;
             Thread t = new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    while(true){
+                    while (true) {
                         try {
-                            if(contatoreidle > 3){
+                            if (contatoreidle == 3) {
                                 refresher = true;
+                                TextView viewdilog = findViewById(R.id.logterminal);
+                                viewdilog.setText("Idle azionato a: " + String.valueOf(contatoreidle));
                                 inviaComando("disattivacitofono", portacomandiesecutore);
-                                startAudioStreaming(false);
+                                startAudioStreaming(true);
                                 Thread.currentThread().interrupt();
+
                             }
                             Thread.sleep(1000);
                             contatoreidle++;
@@ -272,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
             t.start();
-        }else{
+        } else {
             contatoreidle = 0;
         }
     }
@@ -533,6 +550,7 @@ public class MainActivity extends AppCompatActivity {
             buffer[i] = (byte) (sum / WINDOW_SIZE);
         }
     }
+
     private void receiveAudio() {
         while (true) {
             try {
