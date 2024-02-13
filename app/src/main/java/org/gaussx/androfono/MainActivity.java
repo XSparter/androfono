@@ -22,6 +22,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,6 +68,7 @@ public class MainActivity extends AppCompatActivity {
     public int porta_altoparlante_controllo = 0;
     public int porta_microfono_controllo = 0;
     ImageView redCircleImageView;
+    private SeekBar volumeSeekBar;
     TextView viewdilog;
     ImageView greenCircleImageView;
     public String status_citofono = "red";
@@ -87,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         Button apricancello = findViewById(R.id.azionacancello);
         Button azionacitofono = findViewById(R.id.azionacitofono);
         EditText ip_field = findViewById(R.id.ip_citofono);
+        volumeSeekBar = findViewById(R.id.volumeaudio);
         TextView portelog = findViewById(R.id.portelog);
         visualizzatore = findViewById(R.id.visualizzatorestatus);
         Thread threadporta = new Thread(new Runnable() {
@@ -101,7 +104,8 @@ public class MainActivity extends AppCompatActivity {
 
         }
         mantieniconnesione();
-        azionaCitofono();
+        //azionaCitofono();
+        disattivacitofono();
         aggiornacam();
 
         /** parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
@@ -336,6 +340,19 @@ public class MainActivity extends AppCompatActivity {
         });
         thread.start();
     }
+    private void applyGain(byte[] buffer, int length, float seekBarGain) {
+        for (int i = 0; i < length; i += 2) {
+            short sample = (short) ((buffer[i + 1] << 8) | buffer[i]);
+
+            // Applica una curva logaritmica al guadagno
+            double gainFactor = Math.pow(seekBarGain, 3); // Modifica 1.5 a seconda delle tue esigenze
+            sample = (short) (sample * gainFactor);
+
+            buffer[i] = (byte) sample;
+            buffer[i + 1] = (byte) (sample >> 8);
+        }
+    }
+
 
     public String citofono_ip = "";
 
@@ -436,12 +453,14 @@ public class MainActivity extends AppCompatActivity {
                     old_mute = mute;
                     inviaComando("muteoff", porta_altoparlante_controllo);
                     azionaCitofono();
+                    //disattivacitofono();
                     setSpeaker();
                 } else if (mute == false && mute != old_mute) {
                     // = true;
                     old_mute = mute;
                     inviaComando("muteonn", porta_altoparlante_controllo);
                     disattivacitofono();
+                    //azionaCitofono();
                     setSpeaker();
 
                 }
@@ -514,6 +533,9 @@ public class MainActivity extends AppCompatActivity {
 
                 playThread.start();
             }
+
+
+
         } else {
             Log.d("citofono", "il citofono non è pronto");
             if (toastcontroller) {
@@ -563,16 +585,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void applyLowPassFilter(byte[] buffer, int bytesRead) {
-        for (int i = 0; i < bytesRead; i++) {
-            // Calcola la media mobile
-            int sum = 0;
-            for (int j = Math.max(0, i - WINDOW_SIZE / 2); j < Math.min(bytesRead, i + WINDOW_SIZE / 2 + 1); j++) {
-                sum += buffer[j];
-            }
-            buffer[i] = (byte) (sum / WINDOW_SIZE);
-        }
-    }
+
+
 
     private void receiveAudio() {
         while (true) {
@@ -588,6 +602,8 @@ public class MainActivity extends AppCompatActivity {
                     //if (bytesRead == -1) {
                     //  break;  // Fine del flusso, esci dal ciclo
                     //applyLowPassFilter(buffer, bytesRead);
+                    float seekBarGain = volumeSeekBar.getProgress() / 100.0f; // Normalizza tra 0 e 1
+                    //applyGain(buffer, bytesRead,seekBarGain);
                     AudioProcessor.processAudioBuffer(buffer, bytesRead);
 
                     //} //questa parte fa chiudere il programma se il citofono chiude la connessione, non so se è il caso di lasciarla o meno, per ora la commento
