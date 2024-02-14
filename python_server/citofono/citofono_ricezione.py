@@ -40,7 +40,8 @@ def set_muted(value):
 def get_muted():
     with muted_lock:
         return muted
-        
+
+   
 class AudioStreamHandler(socketserver.StreamRequestHandler):
     def handle(self):
         print(f"Accepted connection from {self.client_address}")

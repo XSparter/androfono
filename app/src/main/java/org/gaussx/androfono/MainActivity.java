@@ -3,6 +3,8 @@ package org.gaussx.androfono;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -40,7 +42,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
 import java.net.Socket;
+import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -107,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
         //azionaCitofono();
         disattivacitofono();
         aggiornacam();
+        connetti_telecamera();
 
         /** parlalacifotono.setOnTouchListener(new View.OnTouchListener() {
         @Override public boolean onTouch(View view, MotionEvent motionEvent) {
@@ -226,6 +231,43 @@ public class MainActivity extends AppCompatActivity {
         });
         thread.start();
 
+    }
+public Bitmap getBitmapFromURL(String src) {
+    try {
+        URL url = new URL(src);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        connection.setDoInput(true);
+        connection.connect();
+        InputStream input = connection.getInputStream();
+        return BitmapFactory.decodeStream(input);
+    } catch (IOException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
+    private void connetti_telecamera() {
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    String url = "http://192.168.1.148/image";
+                    ImageView camera = findViewById(R.id.telecamera);
+                    Bitmap bitmap = getBitmapFromURL(url);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            camera.setImageBitmap(bitmap);
+                        }
+                    });
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
+        t.start();
     }
 
 

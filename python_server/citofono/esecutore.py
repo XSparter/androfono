@@ -63,12 +63,17 @@ def controllo_orario():
 
         if orario_di_riferimento is not None and now > orario_di_riferimento + timedelta(seconds=5):
             termina_processi()
-            GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
+            GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH)
             GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.HIGH)
             print(f"I deactivated the buzzer.")
             with lock:
                 variabile_status = "green"
+            # Esegui una richiesta GET a http://192.168.1.148/ledoff
+            requests.get('http://192.168.1.148/ledoff')
             break
+        else:
+            # Esegui una richiesta GET a http://192.168.1.148/ledon
+            requests.get('http://192.168.1.148/ledon')
 
         time.sleep(1)
 
@@ -108,17 +113,17 @@ while True:
     if command == "apricancello":
         print("Opening gate.")
         GPIO.output(PIN_APRICANCELLO, GPIO.HIGH)
-        time.sleep(1)
+        time.sleep(0.5)
         GPIO.output(PIN_APRICANCELLO, GPIO.LOW)
 
     elif command == "azionacitofono":
-        print("Activate buzzer.")
-        GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.HIGH)
+        print("Attivo l'arrivo di audio dal cellulare")
+        GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.LOW)
         GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
     elif command == "disattivacitofono":
-        print("Deactivate buzzer.")
+        print("Disattivo l'arrivo di audio dal cellulare.")
         GPIO.output(PIN_AZIONA_CITOFONO2, GPIO.LOW)
-        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.HIGH) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
+        GPIO.output(PIN_AZIONA_CITOFONO, GPIO.LOW) #controlla questo pin in base al tipo  di modulo relè con cui stai lavorando.
     elif command == "richiediportamicrofoni":
         print("Requesting microphone transmission configuration.")
         with lock:

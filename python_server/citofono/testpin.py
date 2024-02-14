@@ -13,12 +13,12 @@ try:
         # Accendi il pin 22 e spegni il pin 23
         GPIO.output(22, GPIO.HIGH)
         GPIO.output(23, GPIO.LOW)
-        time.sleep(1)  # Attendi un secondo
+        time.sleep(0.1)  # Attendi un secondo
 
         # Spegni il pin 22 e accendi il pin 23
         GPIO.output(22, GPIO.LOW)
         GPIO.output(23, GPIO.HIGH)
-        time.sleep(1)  # Attendi un secondo
+        time.sleep(0.1)  # Attendi un secondo
 
 except KeyboardInterrupt:
     # Gestisci l'interruzione da tastiera (Ctrl+C)
